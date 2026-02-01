@@ -104,6 +104,68 @@
             z-index: 5;
         }
 
+        /* Progress Bar Styles */
+        #progress-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            z-index: 2000;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: var(--accent-brand);
+            transition: width 0.1s linear;
+        }
+
+        /* Webcam Overlay Styles */
+        #webcam-container {
+            position: fixed;
+            bottom: 120px;
+            right: 30px;
+            width: 240px;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 2px solid var(--border-dark);
+            z-index: 100;
+            display: none;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+        #webcam-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Mirror view */
+        }
+        .recording-indicator {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0,0,0,0.5);
+            padding: 2px 8px;
+            border-radius: 20px;
+            color: #ff4444;
+            font-size: 10px;
+            font-weight: bold;
+            display: none;
+        }
+        .recording-dot {
+            width: 8px;
+            height: 8px;
+            background: #ff4444;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
         .practice-overlay {
             position: fixed;
             inset: 0;
@@ -221,6 +283,12 @@
             background: rgba(239, 68, 68, 0.1);
             border-color: rgba(239, 68, 68, 0.2);
         }
+
+        .recording-active {
+            color: #ff4444 !important;
+            border-color: #ff4444 !important;
+            background: rgba(255, 68, 68, 0.1) !important;
+        }
     </style>
 </head>
 <body>
@@ -272,8 +340,16 @@
 
     <!-- PRACTICE VIEW -->
     <div id="practice-view" onmousemove="showControlsTemporary()">
+        <div id="progress-container"><div id="progress-bar"></div></div>
         <div class="guide-line"></div>
         
+        <div id="webcam-container">
+            <video id="webcam-video" autoplay muted playsinline></video>
+            <div id="rec-indicator" class="recording-indicator">
+                <div class="recording-dot"></div> REC
+            </div>
+        </div>
+
         <div id="scrolling-wrapper" style="position: absolute; width: 100%;">
             <div id="scrolling-content"></div>
             <div style="height: 100vh;"></div>
@@ -286,6 +362,14 @@
                     <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
                 <div class="d-flex gap-2">
+                    <!-- Webcam Toggle Icon -->
+                    <button id="camera-btn" class="btn glass-panel text-white btn-round" onclick="toggleWebcam()" title="Toggle Camera">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                    </button>
+                    <!-- Record Toggle Icon -->
+                    <button id="record-btn" class="btn glass-panel text-white btn-round" onclick="toggleRecording()" title="Toggle Recording" style="display: none;">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle></svg>
+                    </button>
                     <!-- Reset Scroll Icon -->
                     <button class="btn glass-panel text-white btn-round" onclick="resetScroll()" title="Reset">
                         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
@@ -334,6 +418,12 @@
         let lastTime = 0;
         let controlTimer = null;
 
+        // Webcam & Recording State
+        let webcamStream = null;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+
         // --- DOM Elements ---
         const editView = document.getElementById('edit-view');
         const practiceView = document.getElementById('practice-view');
@@ -342,6 +432,11 @@
         const scrollingWrapper = document.getElementById('scrolling-wrapper');
         const controlsOverlay = document.getElementById('controls-overlay');
         const playPauseIcon = document.getElementById('play-pause-icon');
+        const progressBar = document.getElementById('progress-bar');
+        const webcamContainer = document.getElementById('webcam-container');
+        const webcamVideo = document.getElementById('webcam-video');
+        const recIndicator = document.getElementById('rec-indicator');
+        const recordBtn = document.getElementById('record-btn');
 
         // Sync inputs
         const speedInput = document.getElementById('speed-input');
@@ -409,8 +504,73 @@
             resetScroll();
         }
 
+        async function toggleWebcam() {
+            if (webcamStream) {
+                stopWebcam();
+            } else {
+                try {
+                    webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    webcamVideo.srcObject = webcamStream;
+                    webcamContainer.style.display = 'block';
+                    recordBtn.style.display = 'flex';
+                } catch (err) {
+                    console.error("Error accessing webcam:", err);
+                    alert("Unable to access camera. Please check permissions.");
+                }
+            }
+        }
+
+        function stopWebcam() {
+            if (isRecording) toggleRecording();
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                webcamStream = null;
+            }
+            webcamVideo.srcObject = null;
+            webcamContainer.style.display = 'none';
+            recordBtn.style.display = 'none';
+        }
+
+        function toggleRecording() {
+            if (!isRecording) {
+                recordedChunks = [];
+                const options = { mimeType: 'video/webm; codecs=vp9' };
+                mediaRecorder = new MediaRecorder(webcamStream, options);
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) recordedChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `practice-${new Date().getTime()}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                    }, 100);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                recIndicator.style.display = 'flex';
+                recordBtn.classList.add('recording-active');
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                recIndicator.style.display = 'none';
+                recordBtn.classList.remove('recording-active');
+            }
+        }
+
         function exitPractice() {
             isScrolling = false;
+            stopWebcam();
             editView.style.display = 'block';
             practiceView.style.display = 'none';
             document.body.style.cursor = 'default';
@@ -421,6 +581,7 @@
             isScrolling = false;
             updateScrollUI();
             updatePlayPauseIcon();
+            progressBar.style.width = "0%";
         }
 
         function togglePlayPause() {
@@ -447,17 +608,25 @@
             const deltaTime = time - lastTime;
             lastTime = time;
 
-            // Speed factor: pace * base multiplier
             const pixelsPerSecond = speed * 3.5;
             scrollPos += (pixelsPerSecond * deltaTime) / 1000;
 
             updateScrollUI();
+            updateProgress();
             requestAnimationFrame(animate);
         }
 
         function updateScrollUI() {
-            // Start at 70vh from top (bottom of screen) and scroll up
             scrollingWrapper.style.transform = `translateY(calc(70vh - ${scrollPos}px))`;
+        }
+
+        function updateProgress() {
+            const contentHeight = scrollingContent.offsetHeight;
+            const viewportHeight = window.innerHeight;
+            // Total distance text travels to reach the top
+            const totalDistance = contentHeight + (viewportHeight * 0.3); 
+            const progress = Math.min(100, Math.max(0, (scrollPos / totalDistance) * 100));
+            progressBar.style.width = progress + "%";
         }
 
         function showControlsTemporary() {
@@ -518,7 +687,6 @@
 
         // Click on background to play/pause during practice
         practiceView.addEventListener('click', (e) => {
-            // Only toggle if we didn't click a control panel or button
             if (e.target.id === 'practice-view' || e.target.id === 'scrolling-wrapper') {
                 togglePlayPause();
             }
