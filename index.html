@@ -44,7 +44,7 @@
 
         /* Edit View Components */
         .app-container {
-            max-width: 900px;
+            max-width: 1100px;
             margin: 0 auto;
             padding: 2rem 1rem;
         }
@@ -56,23 +56,43 @@
             object-fit: contain;
         }
 
-        .script-area {
+        /* Rich Text Editor Styling */
+        .editor-container {
             background-color: var(--card-dark);
             border: 1px solid var(--border-dark);
-            color: #e2e8f0;
             border-radius: 1.5rem;
-            padding: 1.5rem;
-            font-size: 1.1rem;
-            resize: none;
-            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
 
+        .editor-toolbar {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-dark);
+            background: rgba(255,255,255,0.02);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .script-area {
+            color: #e2e8f0;
+            padding: 1.5rem;
+            font-size: 1.1rem;
+            min-height: 450px;
+            max-height: 600px;
+            overflow-y: auto;
+            outline: none;
+        }
+
         .script-area:focus {
-            background-color: var(--card-dark);
             border-color: var(--accent-brand);
-            box-shadow: 0 0 0 0.25rem rgba(209, 67, 39, 0.2);
-            color: white;
+        }
+
+        [contenteditable]:empty:before {
+            content: attr(placeholder);
+            color: #64748b;
+            cursor: text;
         }
 
         .control-card {
@@ -80,6 +100,43 @@
             border: 1px solid var(--border-dark);
             border-radius: 1.25rem;
             padding: 1.25rem;
+        }
+
+        /* Script Library Sidebar Styles */
+        .library-panel {
+            background-color: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border-dark);
+            border-radius: 1.5rem;
+            padding: 1.25rem;
+            height: 100%;
+            overflow-y: auto;
+        }
+        .library-item {
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.03);
+        }
+        .library-item:hover {
+            background: rgba(255,255,255,0.07);
+        }
+        .library-item.active {
+            background: rgba(209, 67, 39, 0.1);
+            border-color: var(--accent-brand);
+        }
+        .library-item-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 140px;
         }
 
         /* Practice View Components */
@@ -193,6 +250,7 @@
             justify-content: center;
             padding: 0;
             transition: all 0.2s ease;
+            position: relative;
         }
         
         .btn-round:hover {
@@ -284,10 +342,63 @@
             border-color: rgba(239, 68, 68, 0.2);
         }
 
+        .btn-toolbar {
+            background: transparent;
+            border: 1px solid transparent;
+            color: #94a3b8;
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .btn-toolbar:hover {
+            background: rgba(255,255,255,0.05);
+            color: #f8fafc;
+        }
+
+        .btn-toolbar.active {
+            color: var(--accent-brand);
+            background: rgba(209, 67, 39, 0.1);
+        }
+
+        .btn-action-sm {
+            padding: 4px;
+            color: #64748b;
+            transition: color 0.2s;
+        }
+        .btn-action-sm:hover {
+            color: var(--accent-brand);
+        }
+        .btn-delete:hover {
+            color: #ef4444;
+        }
+
         .recording-active {
             color: #ff4444 !important;
             border-color: #ff4444 !important;
             background: rgba(255, 68, 68, 0.1) !important;
+        }
+
+        .voice-active {
+            color: #10b981 !important;
+            border-color: #10b981 !important;
+            background: rgba(16, 185, 129, 0.1) !important;
+        }
+
+        .voice-indicator {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 12px;
+            height: 12px;
+            background: #10b981;
+            border-radius: 50%;
+            border: 2px solid var(--card-dark);
+            display: none;
         }
     </style>
 </head>
@@ -296,45 +407,84 @@
     <!-- EDIT VIEW -->
     <div id="edit-view">
         <div class="app-container">
+            <!-- Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div class="d-flex align-items-center">
                     <div id="logo-wrapper" class="d-flex align-items-center justify-content-center">
-                        <!-- Horizontal Logo -->
                         <img src="assets/logo.png" alt="Logo" class="logo-container" onerror="handleLogoError(this)">
                     </div>
                 </div>
-                <!-- Clear Script Icon Button -->
-                <button class="btn btn-icon-only" onclick="clearScript()" title="Clear Script">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
-            </div>
-
-            <textarea id="script-input" class="form-control script-area mb-4" placeholder="Type or paste your script here..."></textarea>
-
-            <div class="row g-3 mb-4">
-                <div class="col-md-6">
-                    <div class="control-card">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="label-header">PACE</span>
-                            <span id="speed-val" class="text-brand fw-bold font-monospace">30%</span>
-                        </div>
-                        <input type="range" class="form-range" id="speed-input" min="1" max="100" value="30">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="control-card">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="label-header">TEXT SIZE</span>
-                            <span id="size-val" class="text-brand fw-bold font-monospace">64px</span>
-                        </div>
-                        <input type="range" class="form-range" id="size-input" min="24" max="120" value="64">
-                    </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-icon-only" onclick="createNewScript()" title="New Script">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                    <button class="btn btn-icon-only" onclick="clearScript()" title="Clear Content">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
                 </div>
             </div>
 
-            <button class="btn btn-brand w-100 py-3 rounded-4 fw-black fs-4 shadow-lg" onclick="startPractice()">
-                START PRACTICE
-            </button>
+            <div class="row g-4">
+                <!-- Sidebar: Script Library -->
+                <div class="col-md-3">
+                    <div class="label-header mb-3">Script Library</div>
+                    <div id="library-list" class="library-panel no-scrollbar">
+                        <!-- Items injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <div class="col-md-9">
+                    <div class="mb-2 d-flex justify-content-between align-items-end">
+                        <div class="label-header">Editor</div>
+                        <div id="script-name-display" class="small fw-bold text-secondary">Draft</div>
+                    </div>
+                    
+                    <div class="editor-container mb-4">
+                        <div class="editor-toolbar">
+                            <button class="btn btn-toolbar" onclick="execCmd('bold')" title="Bold">
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>
+                            </button>
+                            <button class="btn btn-toolbar" onclick="execCmd('italic')" title="Italic">
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg>
+                            </button>
+                            <div class="vr mx-1 opacity-10"></div>
+                            <button class="btn btn-toolbar" onclick="execCmd('foreColor', '#d14327')" title="Brand Color Text">
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </button>
+                            <button class="btn btn-toolbar" onclick="execCmd('foreColor', '#f8fafc')" title="Reset White Text">
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                        <div id="script-input" class="script-area" contenteditable="true" placeholder="Type or paste your script here..."></div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="control-card">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="label-header">PACE</span>
+                                    <span id="speed-val" class="text-brand fw-bold font-monospace">30%</span>
+                                </div>
+                                <input type="range" class="form-range" id="speed-input" min="1" max="100" value="30">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="control-card">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="label-header">TEXT SIZE</span>
+                                    <span id="size-val" class="text-brand fw-bold font-monospace">64px</span>
+                                </div>
+                                <input type="range" class="form-range" id="size-input" min="24" max="120" value="64">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-brand w-100 py-3 rounded-4 fw-black fs-4 shadow-lg" onclick="startPractice()">
+                        START PRACTICE
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -362,6 +512,11 @@
                     <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
                 <div class="d-flex gap-2">
+                    <!-- Voice Control Toggle -->
+                    <button id="voice-btn" class="btn glass-panel text-white btn-round" onclick="toggleVoiceScroll()" title="Voice-Activated Scrolling">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                        <div id="voice-status" class="voice-indicator"></div>
+                    </button>
                     <!-- Webcam Toggle Icon -->
                     <button id="camera-btn" class="btn glass-panel text-white btn-round" onclick="toggleWebcam()" title="Toggle Camera">
                         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
@@ -410,7 +565,8 @@
 
     <script>
         // --- State ---
-        let script = "Welcome to your professional teleprompter.\n\nType or paste your script here to begin.\n\nAdjust the scrolling pace and font size using the controls.\n\nThe text will scroll smoothly from bottom to top.";
+        let scripts = [];
+        let activeScriptId = null;
         let speed = 30;
         let fontSize = 64;
         let isScrolling = false;
@@ -424,10 +580,16 @@
         let recordedChunks = [];
         let isRecording = false;
 
+        // Voice Scroll State
+        let isVoiceEnabled = false;
+        let recognition = null;
+        let voiceSilenceTimer = null;
+
         // --- DOM Elements ---
         const editView = document.getElementById('edit-view');
         const practiceView = document.getElementById('practice-view');
         const scriptInput = document.getElementById('script-input');
+        const libraryList = document.getElementById('library-list');
         const scrollingContent = document.getElementById('scrolling-content');
         const scrollingWrapper = document.getElementById('scrolling-wrapper');
         const controlsOverlay = document.getElementById('controls-overlay');
@@ -437,8 +599,9 @@
         const webcamVideo = document.getElementById('webcam-video');
         const recIndicator = document.getElementById('rec-indicator');
         const recordBtn = document.getElementById('record-btn');
+        const voiceBtn = document.getElementById('voice-btn');
+        const voiceStatus = document.getElementById('voice-status');
 
-        // Sync inputs
         const speedInput = document.getElementById('speed-input');
         const sizeInput = document.getElementById('size-input');
         const speedPractice = document.getElementById('speed-practice');
@@ -452,55 +615,223 @@
             wrapper.innerHTML = `<svg width="24" height="24" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg><span class="fw-black ms-2 text-white">ScriptPractice</span>`;
         }
 
-        // --- Persistence Logic ---
+        // --- Script Library Logic ---
 
-        function loadConfig() {
-            const savedScript = localStorage.getItem('tp_script');
+        function loadAllData() {
+            const savedScripts = localStorage.getItem('tp_scripts_v2');
+            if (savedScripts) {
+                scripts = JSON.parse(savedScripts);
+            } else {
+                scripts = [{
+                    id: Date.now(),
+                    name: "Default Script",
+                    content: "Welcome to your <b>professional</b> teleprompter.\n\nYou can now <font color='#d14327'>highlight</font> or <i>italicize</i> words for better delivery."
+                }];
+            }
+            
+            activeScriptId = localStorage.getItem('tp_active_id') || scripts[0].id;
+            activeScriptId = parseInt(activeScriptId);
+            
             const savedSpeed = localStorage.getItem('tp_speed');
             const savedSize = localStorage.getItem('tp_size');
+            if (savedSpeed) syncSpeed(savedSpeed);
+            if (savedSize) syncSize(savedSize);
 
-            if (savedScript !== null) {
-                script = savedScript;
-                scriptInput.value = script;
-            } else {
-                scriptInput.value = script;
-            }
-
-            if (savedSpeed !== null) {
-                syncSpeed(savedSpeed);
-            }
-
-            if (savedSize !== null) {
-                syncSize(savedSize);
-            }
+            renderLibrary();
+            loadActiveScript();
         }
 
-        function saveConfig() {
-            localStorage.setItem('tp_script', scriptInput.value);
+        function saveAllData() {
+            localStorage.setItem('tp_scripts_v2', JSON.stringify(scripts));
+            localStorage.setItem('tp_active_id', activeScriptId);
             localStorage.setItem('tp_speed', speed);
             localStorage.setItem('tp_size', fontSize);
         }
 
-        // --- Logic Functions ---
+        function renderLibrary() {
+            libraryList.innerHTML = '';
+            scripts.forEach(s => {
+                const item = document.createElement('div');
+                item.className = `library-item ${s.id === activeScriptId ? 'active' : ''}`;
+                item.onclick = () => selectScript(s.id);
+                
+                item.innerHTML = `
+                    <div class="library-item-title">${s.name}</div>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-action-sm p-0" onclick="renameScript(event, ${s.id})" title="Rename">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                        <button class="btn btn-action-sm btn-delete p-0" onclick="deleteScript(event, ${s.id})" title="Delete">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
+                `;
+                libraryList.appendChild(item);
+            });
+        }
+
+        function selectScript(id) {
+            const currentIdx = scripts.findIndex(s => s.id === activeScriptId);
+            if (currentIdx !== -1) scripts[currentIdx].content = scriptInput.innerHTML;
+            
+            activeScriptId = id;
+            loadActiveScript();
+            renderLibrary();
+            saveAllData();
+        }
+
+        function loadActiveScript() {
+            const script = scripts.find(s => s.id === activeScriptId);
+            if (script) {
+                scriptInput.innerHTML = script.content;
+                document.getElementById('script-name-display').innerText = script.name;
+            }
+        }
+
+        function createNewScript() {
+            const newS = {
+                id: Date.now(),
+                name: "New Script " + (scripts.length + 1),
+                content: ""
+            };
+            scripts.unshift(newS);
+            activeScriptId = newS.id;
+            renderLibrary();
+            loadActiveScript();
+            saveAllData();
+            scriptInput.focus();
+        }
+
+        function renameScript(e, id) {
+            e.stopPropagation();
+            const script = scripts.find(s => s.id === id);
+            const newName = prompt("Enter new name:", script.name);
+            if (newName) {
+                script.name = newName;
+                renderLibrary();
+                if (id === activeScriptId) document.getElementById('script-name-display').innerText = newName;
+                saveAllData();
+            }
+        }
+
+        function deleteScript(e, id) {
+            e.stopPropagation();
+            if (scripts.length <= 1) return alert("You must have at least one script.");
+            if (!confirm("Delete this script?")) return;
+            
+            scripts = scripts.filter(s => s.id !== id);
+            if (activeScriptId === id) activeScriptId = scripts[0].id;
+            
+            renderLibrary();
+            loadActiveScript();
+            saveAllData();
+        }
+
+        // --- Rich Text Logic ---
+        function execCmd(command, value = null) {
+            document.execCommand(command, false, value);
+            scriptInput.focus();
+        }
+
+        // --- Voice Scroll Logic ---
+
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return;
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = () => {
+                if (isVoiceEnabled) {
+                    if (!isScrolling) resumeScrolling();
+                    
+                    clearTimeout(voiceSilenceTimer);
+                    voiceSilenceTimer = setTimeout(() => {
+                        if (isVoiceEnabled) pauseScrolling();
+                    }, 2500); 
+                }
+            };
+
+            recognition.onerror = (e) => {
+                console.error("Speech Recognition Error:", e);
+                isVoiceEnabled = false;
+                updateVoiceUI();
+            };
+
+            recognition.onend = () => {
+                if (isVoiceEnabled) recognition.start(); 
+            };
+        }
+
+        function toggleVoiceScroll() {
+            if (!recognition) {
+                initSpeechRecognition();
+                if (!recognition) return alert("Speech recognition not supported in this browser.");
+            }
+
+            isVoiceEnabled = !isVoiceEnabled;
+            updateVoiceUI();
+
+            if (isVoiceEnabled) {
+                recognition.start();
+                pauseScrolling(); 
+            } else {
+                recognition.stop();
+                clearTimeout(voiceSilenceTimer);
+            }
+        }
+
+        function updateVoiceUI() {
+            if (isVoiceEnabled) {
+                voiceBtn.classList.add('voice-active');
+                voiceStatus.style.display = 'block';
+            } else {
+                voiceBtn.classList.remove('voice-active');
+                voiceStatus.style.display = 'none';
+            }
+        }
+
+        function resumeScrolling() {
+            if (isScrolling) return;
+            isScrolling = true;
+            updatePlayPauseIcon();
+            lastTime = performance.now();
+            requestAnimationFrame(animate);
+        }
+
+        function pauseScrolling() {
+            isScrolling = false;
+            updatePlayPauseIcon();
+        }
+
+        // --- Core Prompter Logic ---
 
         function clearScript() {
-            scriptInput.value = "";
+            scriptInput.innerHTML = "";
             scriptInput.focus();
-            saveConfig();
+            const current = scripts.find(s => s.id === activeScriptId);
+            if (current) current.content = "";
+            saveAllData();
         }
 
         function startPractice() {
-            script = scriptInput.value || "No script provided.";
+            const current = scripts.find(s => s.id === activeScriptId);
+            if (current) current.content = scriptInput.innerHTML;
+            saveAllData();
+
+            const finalScript = scriptInput.innerHTML || "No content.";
             speed = parseInt(speedInput.value);
             fontSize = parseInt(sizeInput.value);
             
-            scrollingContent.innerText = script;
+            scrollingContent.innerHTML = finalScript;
             scrollingContent.style.fontSize = fontSize + 'px';
             
             editView.style.display = 'none';
             practiceView.style.display = 'block';
             
-            saveConfig();
             resetScroll();
         }
 
@@ -571,6 +902,7 @@
         function exitPractice() {
             isScrolling = false;
             stopWebcam();
+            if (isVoiceEnabled) toggleVoiceScroll();
             editView.style.display = 'block';
             practiceView.style.display = 'none';
             document.body.style.cursor = 'default';
@@ -591,6 +923,11 @@
                 lastTime = performance.now();
                 requestAnimationFrame(animate);
                 showControlsTemporary();
+                if (isVoiceEnabled) {
+                    isVoiceEnabled = false; 
+                    updateVoiceUI();
+                    recognition.stop();
+                }
             }
         }
 
@@ -623,7 +960,6 @@
         function updateProgress() {
             const contentHeight = scrollingContent.offsetHeight;
             const viewportHeight = window.innerHeight;
-            // Total distance text travels to reach the top
             const totalDistance = contentHeight + (viewportHeight * 0.3); 
             const progress = Math.min(100, Math.max(0, (scrollPos / totalDistance) * 100));
             progressBar.style.width = progress + "%";
@@ -649,7 +985,7 @@
                     .then(() => {
                         fsIcon.innerHTML = '<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>';
                     })
-                    .catch(e => console.log(e));
+                    .catch(() => {});
             } else {
                 document.exitFullscreen()
                     .then(() => {
@@ -658,15 +994,13 @@
             }
         }
 
-        // --- Event Listeners for Sliders ---
-
         function syncSpeed(val) {
             speed = parseInt(val);
             speedInput.value = val;
             speedPractice.value = val;
             document.getElementById('speed-val').innerText = val + '%';
             document.getElementById('speed-val-practice').innerText = val + '%';
-            saveConfig();
+            saveAllData();
         }
 
         function syncSize(val) {
@@ -676,28 +1010,29 @@
             scrollingContent.style.fontSize = val + 'px';
             document.getElementById('size-val').innerText = val + 'px';
             document.getElementById('size-val-practice').innerText = val + 'px';
-            saveConfig();
+            saveAllData();
         }
 
-        scriptInput.addEventListener('input', saveConfig);
+        scriptInput.addEventListener('input', () => {
+            const current = scripts.find(s => s.id === activeScriptId);
+            if (current) current.content = scriptInput.innerHTML;
+            saveAllData();
+        });
+        
         speedInput.addEventListener('input', (e) => syncSpeed(e.target.value));
         speedPractice.addEventListener('input', (e) => syncSpeed(e.target.value));
         sizeInput.addEventListener('input', (e) => syncSize(e.target.value));
         sizePractice.addEventListener('input', (e) => syncSize(e.target.value));
 
-        // Click on background to play/pause during practice
         practiceView.addEventListener('click', (e) => {
             if (e.target.id === 'practice-view' || e.target.id === 'scrolling-wrapper') {
                 togglePlayPause();
             }
         });
 
-        // Initialize from local storage on load
-        window.addEventListener('load', loadConfig);
+        window.addEventListener('load', loadAllData);
 
     </script>
-
-    <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
