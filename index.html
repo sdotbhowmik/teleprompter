@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScriptPractice - Bootstrap Teleprompter</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        :root {
+            --bg-dark: #020617;
+            --card-dark: #0f172a;
+            --border-dark: #1e293b;
+            --accent-blue: #3b82f6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            margin: 0;
+            overflow-x: hidden;
+            height: 100vh;
+        }
+
+        /* Views */
+        #edit-view, #practice-view {
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        #practice-view {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: black;
+            z-index: 1000;
+        }
+
+        /* Edit View Components */
+        .app-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .script-area {
+            background-color: var(--card-dark);
+            border: 1px solid var(--border-dark);
+            color: #e2e8f0;
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            font-size: 1.1rem;
+            resize: none;
+            min-height: 400px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .script-area:focus {
+            background-color: var(--card-dark);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+            color: white;
+        }
+
+        .control-card {
+            background-color: var(--card-dark);
+            border: 1px solid var(--border-dark);
+            border-radius: 1.25rem;
+            padding: 1.25rem;
+        }
+
+        /* Practice View Components */
+        #scrolling-content {
+            width: 100%;
+            padding: 0 15%;
+            text-align: center;
+            font-weight: 700;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            pointer-events: none;
+        }
+
+        .guide-line {
+            position: fixed;
+            top: 25%;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: rgba(59, 130, 246, 0.2);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .practice-overlay {
+            position: fixed;
+            inset: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: opacity 0.5s ease;
+            z-index: 10;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 2.5rem;
+        }
+
+        .btn-round {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .btn-play {
+            width: 70px;
+            height: 70px;
+            background-color: var(--accent-blue);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
+        }
+
+        .btn-play:active {
+            transform: scale(0.9);
+        }
+
+        /* Custom Range Inputs */
+        input[type=range] {
+            accent-color: var(--accent-blue);
+        }
+
+        .label-header {
+            font-size: 0.65rem;
+            font-weight: 900;
+            letter-spacing: 0.1em;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- EDIT VIEW -->
+    <div id="edit-view">
+        <div class="app-container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-primary p-2 rounded-3 text-white">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    </div>
+                    <h2 class="fw-black mb-0">ScriptPractice</h2>
+                </div>
+                <button class="btn btn-link text-secondary text-decoration-none fw-bold p-0" onclick="clearScript()">CLEAR SCRIPT</button>
+            </div>
+
+            <textarea id="script-input" class="form-control script-area mb-4" placeholder="Type or paste your script here..."></textarea>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="control-card">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="label-header">PACE</span>
+                            <span id="speed-val" class="text-primary fw-bold font-monospace">30%</span>
+                        </div>
+                        <input type="range" class="form-range" id="speed-input" min="1" max="100" value="30">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="control-card">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="label-header">TEXT SIZE</span>
+                            <span id="size-val" class="text-primary fw-bold font-monospace">64px</span>
+                        </div>
+                        <input type="range" class="form-range" id="size-input" min="24" max="120" value="64">
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary w-100 py-3 rounded-4 fw-black fs-4 shadow" onclick="startPractice()">
+                START PRACTICE
+            </button>
+        </div>
+    </div>
+
+    <!-- PRACTICE VIEW -->
+    <div id="practice-view" onmousemove="showControlsTemporary()">
+        <div class="guide-line"></div>
+        
+        <div id="scrolling-wrapper" style="position: absolute; width: 100%;">
+            <div id="scrolling-content"></div>
+            <div style="height: 100vh;"></div>
+        </div>
+
+        <div id="controls-overlay" class="practice-overlay">
+            <!-- Top Bar -->
+            <div class="d-flex justify-content-between pointer-events-auto">
+                <button class="btn glass-panel text-white btn-round" onclick="exitPractice()">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn glass-panel text-white btn-round" onclick="resetScroll()">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                    </button>
+                    <button class="btn glass-panel text-white btn-round" onclick="toggleFullscreen()">
+                        <svg id="fs-icon" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bottom Control Panel -->
+            <div class="d-flex justify-content-center pointer-events-auto">
+                <div class="glass-panel p-4 d-flex align-items-center gap-4 w-100 shadow-lg" style="max-width: 800px;">
+                    <button id="play-pause-btn" class="btn btn-play" onclick="togglePlayPause()">
+                        <svg id="play-pause-icon" width="32" height="32" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    </button>
+                    <div class="flex-grow-1">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between label-header mb-1">
+                                <span>SPEED</span>
+                                <span id="speed-val-practice" class="text-primary">30%</span>
+                            </div>
+                            <input type="range" class="form-range" id="speed-practice" min="1" max="100" value="30">
+                        </div>
+                        <div>
+                            <div class="d-flex justify-content-between label-header mb-1">
+                                <span>SIZE</span>
+                                <span id="size-val-practice" class="text-primary">64px</span>
+                            </div>
+                            <input type="range" class="form-range" id="size-practice" min="24" max="120" value="64">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State ---
+        let script = "Welcome to your professional teleprompter.\n\nType or paste your script here to begin.\n\nAdjust the scrolling pace and font size using the controls.\n\nThe text will scroll smoothly from bottom to top.";
+        let speed = 30;
+        let fontSize = 64;
+        let isScrolling = false;
+        let scrollPos = 0;
+        let lastTime = 0;
+        let controlTimer = null;
+
+        // --- DOM Elements ---
+        const editView = document.getElementById('edit-view');
+        const practiceView = document.getElementById('practice-view');
+        const scriptInput = document.getElementById('script-input');
+        const scrollingContent = document.getElementById('scrolling-content');
+        const scrollingWrapper = document.getElementById('scrolling-wrapper');
+        const controlsOverlay = document.getElementById('controls-overlay');
+        const playPauseIcon = document.getElementById('play-pause-icon');
+
+        // Sync inputs
+        const speedInput = document.getElementById('speed-input');
+        const sizeInput = document.getElementById('size-input');
+        const speedPractice = document.getElementById('speed-practice');
+        const sizePractice = document.getElementById('size-practice');
+
+        // --- Persistence Logic ---
+
+        function loadConfig() {
+            const savedScript = localStorage.getItem('tp_script');
+            const savedSpeed = localStorage.getItem('tp_speed');
+            const savedSize = localStorage.getItem('tp_size');
+
+            if (savedScript !== null) {
+                script = savedScript;
+                scriptInput.value = script;
+            } else {
+                scriptInput.value = script;
+            }
+
+            if (savedSpeed !== null) {
+                syncSpeed(savedSpeed);
+            }
+
+            if (savedSize !== null) {
+                syncSize(savedSize);
+            }
+        }
+
+        function saveConfig() {
+            localStorage.setItem('tp_script', scriptInput.value);
+            localStorage.setItem('tp_speed', speed);
+            localStorage.setItem('tp_size', fontSize);
+        }
+
+        // --- Logic Functions ---
+
+        function clearScript() {
+            scriptInput.value = "";
+            scriptInput.focus();
+            saveConfig();
+        }
+
+        function startPractice() {
+            script = scriptInput.value || "No script provided.";
+            speed = parseInt(speedInput.value);
+            fontSize = parseInt(sizeInput.value);
+            
+            scrollingContent.innerText = script;
+            scrollingContent.style.fontSize = fontSize + 'px';
+            
+            editView.style.display = 'none';
+            practiceView.style.display = 'block';
+            
+            saveConfig();
+            resetScroll();
+        }
+
+        function exitPractice() {
+            isScrolling = false;
+            editView.style.display = 'block';
+            practiceView.style.display = 'none';
+            document.body.style.cursor = 'default';
+        }
+
+        function resetScroll() {
+            scrollPos = 0;
+            isScrolling = false;
+            updateScrollUI();
+            updatePlayPauseIcon();
+        }
+
+        function togglePlayPause() {
+            isScrolling = !isScrolling;
+            updatePlayPauseIcon();
+            if (isScrolling) {
+                lastTime = performance.now();
+                requestAnimationFrame(animate);
+                showControlsTemporary();
+            }
+        }
+
+        function updatePlayPauseIcon() {
+            if (isScrolling) {
+                playPauseIcon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+            } else {
+                playPauseIcon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+            }
+        }
+
+        function animate(time) {
+            if (!isScrolling) return;
+
+            const deltaTime = time - lastTime;
+            lastTime = time;
+
+            // Speed factor: pace * base multiplier
+            const pixelsPerSecond = speed * 3.5;
+            scrollPos += (pixelsPerSecond * deltaTime) / 1000;
+
+            updateScrollUI();
+            requestAnimationFrame(animate);
+        }
+
+        function updateScrollUI() {
+            // Start at 70vh from top (bottom of screen) and scroll up
+            scrollingWrapper.style.transform = `translateY(calc(70vh - ${scrollPos}px))`;
+        }
+
+        function showControlsTemporary() {
+            controlsOverlay.style.opacity = '1';
+            practiceView.style.cursor = 'default';
+            clearTimeout(controlTimer);
+            
+            if (isScrolling) {
+                controlTimer = setTimeout(() => {
+                    controlsOverlay.style.opacity = '0';
+                    practiceView.style.cursor = 'none';
+                }, 3000);
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(e => console.log(e));
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // --- Event Listeners for Sliders ---
+
+        function syncSpeed(val) {
+            speed = parseInt(val);
+            speedInput.value = val;
+            speedPractice.value = val;
+            document.getElementById('speed-val').innerText = val + '%';
+            document.getElementById('speed-val-practice').innerText = val + '%';
+            saveConfig();
+        }
+
+        function syncSize(val) {
+            fontSize = parseInt(val);
+            sizeInput.value = val;
+            sizePractice.value = val;
+            scrollingContent.style.fontSize = val + 'px';
+            document.getElementById('size-val').innerText = val + 'px';
+            document.getElementById('size-val-practice').innerText = val + 'px';
+            saveConfig();
+        }
+
+        scriptInput.addEventListener('input', saveConfig);
+        speedInput.addEventListener('input', (e) => syncSpeed(e.target.value));
+        speedPractice.addEventListener('input', (e) => syncSpeed(e.target.value));
+        sizeInput.addEventListener('input', (e) => syncSize(e.target.value));
+        sizePractice.addEventListener('input', (e) => syncSize(e.target.value));
+
+        // Click on background to play/pause during practice
+        practiceView.addEventListener('click', (e) => {
+            // Only toggle if we didn't click a control panel or button
+            if (e.target.id === 'practice-view' || e.target.id === 'scrolling-wrapper') {
+                togglePlayPause();
+            }
+        });
+
+        // Initialize from local storage on load
+        window.addEventListener('load', loadConfig);
+
+    </script>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
